@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-family, "Montserrat"), ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: var(--primary-color, #001689);
+  --color-secondary: var(--secondary-color, #2A7DE1);
+  --color-accent: var(--accent-color, #2ED9C3);
+  
+  --color-virtus-teal: var(--accent-color, #2ED9C3);
+  --color-virtus-blue: var(--secondary-color, #2A7DE1);
+  --color-virtus-brand-blue: var(--header-color, #0055B8);
+  --color-virtus-navy: var(--primary-color, #001689);
+
+  --color-layout-header: var(--header-color, #0055B8);
+  --color-layout-panel: var(--panel-color, #001689);
+  --color-layout-main: var(--main-color, #f8fafc);
+  --color-layout-font: var(--font-color, #0f172a);
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-layout-main text-layout-font dark:bg-slate-950 dark:text-slate-50;
+    font-weight: 400; /* Regular for content */
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-virtus-brand-blue;
+    font-weight: 700; /* Bold for headers */
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-virtus-teal text-virtus-navy font-bold px-6 py-2 rounded-lg transition-all hover:opacity-90 active:scale-95 disabled:opacity-50;
+  }
+  
+  .btn-secondary {
+    @apply bg-virtus-blue text-white font-bold px-6 py-2 rounded-lg transition-all hover:opacity-90 active:scale-95 disabled:opacity-50;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm p-6;
+  }
+}

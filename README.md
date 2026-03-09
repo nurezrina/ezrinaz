@@ -1,11 +1,61 @@
-<div align="center">
+# VIRTUS Multi-Tenant SaaS Platform
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+## Overview
+VIRTUS is a production-ready, multi-tenant SaaS application built for enterprise HSE management. It features strict data isolation, advanced form building with workflow automation, and secure impersonation capabilities.
 
-  <h1>Built with AI Studio</h2>
+## Tech Stack
+- **Frontend**: React (Vite), Tailwind CSS, Lucide Icons, Framer Motion.
+- **Backend**: Azure Functions (Node.js + TypeScript).
+- **Database**: Azure SQL (Shared schema, tenant-isolated).
+- **Auth**: Azure AD B2C with MSAL React.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Key Features
+1. **Multi-Tenancy**: Data isolation at the database level using `tenant_id`.
+2. **Super Admin Wizard**: Reusable Tenant Setup wizard for creation and editing.
+3. **Tenant Duplication**: Clone full tenant configurations (subscriptions, integrations, mappings).
+4. **Secure Impersonation**: Super Admin can impersonate Tenant Admins; Tenant Admins can impersonate Users. Full audit trail.
+5. **Form Builder**: Drag-and-drop builder with workflow status/action definitions and section visibility rules.
+6. **Integration Mapping**: Per-tenant mapping of internal keys to external ERP/HR systems.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Local Development
 
-</div>
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Environment Setup**:
+   Copy `.env.example` to `.env` and fill in your Azure B2C credentials.
+   ```env
+   GEMINI_API_KEY="..."
+   APP_URL="http://localhost:3000"
+   ```
+
+3. **Run Application**:
+   ```bash
+   npm run dev
+   ```
+
+## Azure Deployment
+
+### 1. Azure SQL Setup
+Run the scripts in `/sql/schema.sql` to initialize your database.
+
+### 2. Azure Functions
+Deploy the `/api` (or `server.ts` logic) to an Azure Function App. Ensure `NODE_ENV=production` is set.
+
+### 3. Azure App Service
+Deploy the React build (`dist/`) to an Azure App Service or Static Web App.
+
+### 4. Azure AD B2C
+- Create a B2C tenant.
+- Register the application.
+- Define App Roles (`super_admin`, `tenant_admin`, `user`).
+- Add custom attribute `extension_tenantId`.
+
+## Branding (VIRTUS Theme)
+- **Teal**: `#2ED9C3` (Primary)
+- **Blue**: `#2A7DE1` (Secondary)
+- **Brand Blue**: `#0055B8` (Emphasis)
+- **Navy**: `#001689` (Backgrounds)
+- **Font**: Montserrat
