@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchMe = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchWithAuth('/api/me');
+      const data = await fetchWithAuth('/api/v1/me');
       setUser(data.user);
       setActingAs(data.actingAs);
       setIsImpersonating(data.isImpersonating);
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (username: string) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch('/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password: 'password' })
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const startImpersonation = async (userId: string, tenantId: string) => {
     try {
-      const data = await fetchWithAuth('/api/impersonation/start', {
+      const data = await fetchWithAuth('/api/v1/impersonation/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId: userId, tenantId })
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchRole = async (targetRole: 'tenant_admin' | 'user') => {
     try {
-      const data = await fetchWithAuth('/api/auth/switch-role', {
+      const data = await fetchWithAuth('/api/v1/auth/switch-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetRole })

@@ -18,7 +18,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const refreshTheme = async () => {
     try {
-      const response = await fetch('/api/theme/resolved', {
+      const response = await fetch('/api/v1/theme/resolved', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'x-app-session': localStorage.getItem('app_session') || ''

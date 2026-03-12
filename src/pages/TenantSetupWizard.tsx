@@ -38,10 +38,10 @@ export const TenantSetupWizard: React.FC<{ tenantId?: string }> = ({ tenantId })
   });
 
   useEffect(() => {
-    fetch('/api/catalog').then(res => res.json()).then(data => setCatalog(data.domains));
+    fetch('/api/v1/catalog').then(res => res.json()).then(data => setCatalog(data.domains));
     
     if (tenantId) {
-      fetch(`/api/tenants/${tenantId}`)
+      fetch(`/api/v1/tenants/${tenantId}`)
         .then(res => res.json())
         .then(data => {
           setFormData({
@@ -63,7 +63,7 @@ export const TenantSetupWizard: React.FC<{ tenantId?: string }> = ({ tenantId })
   const handleComplete = async () => {
     if (tenantId) {
       // Update existing
-      await fetch(`/api/tenants/${tenantId}/theme`, {
+      await fetch(`/api/v1/tenants/${tenantId}/theme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ themeConfig: formData.themeConfig })

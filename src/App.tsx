@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -7,15 +7,20 @@ import { SystemSettings } from './pages/SystemSettings';
 import { TenantSettings } from './pages/TenantSettings';
 import { SuperAdminTenants } from './pages/SuperAdminTenants';
 import { TenantSetupWizard } from './pages/TenantSetupWizard';
-import { TemplateLibrary } from './pages/TemplateLibrary';
-import { TemplateBuilder } from './pages/TemplateBuilder';
 import { UserPortal } from './pages/UserPortal';
 import { FormRunner } from './pages/FormRunner';
 import { SubmissionList } from './pages/SubmissionList';
 import { UserManagement } from './pages/UserManagement';
-import { TasksPage } from './pages/TasksPage';
 import { LoginPage } from './pages/LoginPage';
 import { ImpersonationBanner } from './components/ImpersonationBanner';
+
+const TemplateLibrary = lazy(() => import('./pages/TemplateLibrary').then((m) => ({ default: m.TemplateLibrary })));
+const TemplateBuilder = lazy(() => import('./pages/TemplateBuilder').then((m) => ({ default: m.TemplateBuilder })));
+const TenantFormBuilderPage = lazy(() => import('./pages/TenantFormBuilderPage').then((m) => ({ default: m.TenantFormBuilderPage })));
+const TenantWorkflowEnginePage = lazy(() => import('./pages/TenantWorkflowEnginePage').then((m) => ({ default: m.TenantWorkflowEnginePage })));
+const TenantRolesManagementPage = lazy(() => import('./pages/TenantRolesManagementPage').then((m) => ({ default: m.TenantRolesManagementPage })));
+const TenantDataManagementPage = lazy(() => import('./pages/TenantDataManagementPage').then((m) => ({ default: m.TenantDataManagementPage })));
+const TenantUserManagementPage = lazy(() => import('./pages/TenantUserManagementPage').then((m) => ({ default: m.TenantUserManagementPage })));
 
 function AppContent() {
   const { user, actingAs, isLoading } = useAuth();
@@ -38,7 +43,19 @@ function AppContent() {
 
   // Simple router
   const renderRoute = () => {
-    const role = actingAs?.role;
+    if (path.startsWith('/app/tasks')) return <UserPortal initialTab="tasks" />;
+    if (path.startsWith('/app/modules')) return <UserPortal initialTab="modules" />;
+    if (path.startsWith('/app/forms/new')) return <FormRunner templateId="ptw-example" />;
+    const formRunnerMatch = path.match(/^\/app\/forms\/([^/]+)$/);
+    if (formRunnerMatch) return <FormRunner templateId={decodeURIComponent(formRunnerMatch[1])} />;
+    if (path.startsWith('/app/submissions')) return <SubmissionList />;
+    if (path === '/app') return <UserPortal />;
+
+    const role =
+      actingAs?.actingAsRole ||
+      actingAs?.targetBaseRole ||
+      actingAs?.role ||
+      user?.role;
 
     if (role === 'super_admin' || role === 'support') {
       if (path.startsWith('/super-admin/tenants/new')) return <TenantSetupWizard />;
@@ -50,17 +67,23 @@ function AppContent() {
     }
 
     if (role === 'tenant_admin' || role === 'support_focal') {
+      if (path.startsWith('/tenant-admin/form-builder') && role !== 'tenant_admin') return <UserPortal />;
+      if (path === '/tenant-admin/form-builder') return <TenantFormBuilderPage />;
+      if (path === '/tenant-admin/form-builder/new') return <TenantFormBuilderPage />;
+      if (/^\/tenant-admin\/form-builder\/[^/]+$/.test(path)) return <TenantFormBuilderPage />;
+      if (path.startsWith('/tenant-admin/form-builder')) return <TenantFormBuilderPage />;
+      if (path.startsWith('/tenant-admin/workflow-engine')) return <TenantWorkflowEnginePage />;
+      if (path.startsWith('/tenant-admin/roles-management')) return <TenantRolesManagementPage />;
+      if (path.startsWith('/tenant-admin/data-management')) return <TenantDataManagementPage />;
+      if (path.startsWith('/tenant-admin/user-management')) return <TenantUserManagementPage />;
       if (path.startsWith('/tenant-admin/templates/new')) return <TemplateBuilder />;
       if (path.startsWith('/tenant-admin/templates')) return <TemplateLibrary />;
       if (path.startsWith('/tenant-admin/users')) return <UserManagement />;
       if (path.startsWith('/tenant-admin/settings')) return <TenantSettings />;
-      return <TemplateLibrary />; // Default for tenant_admin
+      return <TenantFormBuilderPage />;
     }
 
     if (role === 'user') {
-      if (path.startsWith('/app/tasks')) return <TasksPage />;
-      if (path.startsWith('/app/forms/new')) return <FormRunner templateId="demo" />;
-      if (path.startsWith('/app/submissions')) return <SubmissionList />;
       return <UserPortal />;
     }
     
@@ -86,7 +109,18 @@ function AppContent() {
   return (
     <>
       <ImpersonationBanner />
-      {renderRoute()}
+      <Suspense
+        fallback={
+          <div className="h-[calc(100vh-48px)] flex items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-virtus-blue border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Loading page...</p>
+            </div>
+          </div>
+        }
+      >
+        {renderRoute()}
+      </Suspense>
     </>
   );
 }

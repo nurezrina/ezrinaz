@@ -12,7 +12,7 @@ export const UserManagement: React.FC = () => {
   const { user: currentUser, actingAs, startImpersonation } = useAuth();
 
   useEffect(() => {
-    fetchWithAuth('/api/users')
+    fetchWithAuth('/api/v1/users')
       .then(data => {
         if (Array.isArray(data)) {
           setUsers(data);

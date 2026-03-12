@@ -16,7 +16,7 @@ export const TenantSettings: React.FC = () => {
 
   useEffect(() => {
     if (tenantId) {
-      fetch(`/api/tenants/${tenantId}`)
+      fetch(`/api/v1/tenants/${tenantId}`)
         .then(res => res.json())
         .then(setTenant);
     }
@@ -27,7 +27,7 @@ export const TenantSettings: React.FC = () => {
     setIsSaving(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/tenants/${tenantId}/theme`, {
+      const response = await fetch(`/api/v1/tenants/${tenantId}/theme`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,1210 @@
+openapi: "3.0.3"
+info:
+  title: VIRTUS SaaS Platform API
+  version: "1.0.0"
+  description: |
+    Multi-tenant enterprise SaaS platform for HSE, Productivity, and Logistics management.
+    All endpoints are prefixed with `/api/v1/`. Authentication is via Bearer token (JWT/session).
+  contact:
+    name: VIRTUS Engineering
+servers:
+  - url: /api/v1
+    description: Versioned API root
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: System
+    description: Platform-level system configuration
+  - name: Catalog
+    description: Feature catalog (domains, modules, features)
+  - name: Tenants
+    description: Tenant management and theming
+  - name: Theme
+    description: Theme resolution
+  - name: Feedback
+    description: User feedback collection
+  - name: Users
+    description: Platform user queries
+  - name: Impersonation
+    description: User impersonation sessions
+  - name: Tasks
+    description: Task management
+  - name: Dashboard
+    description: Dashboard layout persistence
+  - name: Form Templates
+    description: Tenant-scoped form template CRUD
+  - name: Form Versions
+    description: Form template versioning and publishing
+  - name: Form Submissions
+    description: Runtime form submissions
+  - name: Workflow Templates
+    description: Tenant-scoped workflow template CRUD
+  - name: Roles
+    description: Tenant-scoped role management
+  - name: Data Library
+    description: Tenant-scoped data library CRUD
+  - name: User Management
+    description: Tenant-scoped user assignment management
+  - name: Audit Logs
+    description: Platform-level audit log access
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string, nullable: true }
+        email: { type: string }
+        displayName: { type: string }
+        role: { type: string, enum: [super_admin, support, tenant_admin, user, support_focal] }
+
+    Tenant:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, suspended, draft] }
+        usersCount: { type: integer }
+        lastActivity: { type: string, format: date-time }
+
+    ThemeConfig:
+      type: object
+      properties:
+        primaryColor: { type: string }
+        secondaryColor: { type: string }
+        accentColor: { type: string }
+        fontFamily: { type: string }
+        defaultMode: { type: string, enum: [light, dark, system] }
+        allowUserModeToggle: { type: boolean }
+        logoUrl: { type: string }
+        layoutColors:
+          type: object
+          properties:
+            header: { type: string }
+            leftPanel: { type: string }
+            mainPage: { type: string }
+            font: { type: string }
+        graphColors:
+          type: array
+          items: { type: string }
+
+    FormTemplate:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        sections: { type: integer }
+        conditionalRules: { type: integer }
+        status: { type: string, enum: [draft, published, archived] }
+        activeVersionNumber: { type: integer, nullable: true }
+        draftVersionNumber: { type: integer, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    FormVersion:
+      type: object
+      properties:
+        formId: { type: string }
+        versionNumber: { type: integer }
+        status: { type: string, enum: [draft, published, archived] }
+        schema: { type: object }
+        publishedBy: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    FormSubmission:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        formId: { type: string }
+        versionNumber: { type: integer }
+        status: { type: string, enum: [in_progress, submitted, cancelled] }
+        createdBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    WorkflowTemplate:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        linkedForm: { type: string }
+        steps: { type: integer }
+        sla: { type: string }
+        status: { type: string, enum: [draft, published, archived] }
+        updatedAt: { type: string, format: date-time }
+
+    RoleRecord:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        users: { type: integer }
+        modules: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    DataRecord:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        scope: { type: string, enum: [org, module] }
+        type: { type: string }
+        module: { type: string }
+        entity: { type: string }
+        value: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    TenantUser:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        division: { type: string }
+        role: { type: string }
+        companyDepartment: { type: string }
+        status: { type: string, enum: [Active, Inactive, Pending] }
+        assets: { type: array, items: { type: string } }
+        sites: { type: array, items: { type: string } }
+        remark: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string, nullable: true }
+        actorId: { type: string }
+        actingAsId: { type: string, nullable: true }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: string, nullable: true }
+        beforeSnapshot: { type: string, nullable: true }
+        afterSnapshot: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ── Auth ──────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+                  token: { type: string }
+        "401": { description: Invalid credentials, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: Get current user & acting-as context
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+                  actingAs: { $ref: "#/components/schemas/User" }
+                  isImpersonating: { type: boolean }
+
+  /auth/switch-role:
+    post:
+      tags: [Auth]
+      summary: Switch acting role (tenant admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetRole: { type: string }
+      responses:
+        "200": { description: Role switched }
+        "403": { description: Insufficient permissions }
+
+  # ── System ────────────────────────────────────────────
+  /system/config:
+    get:
+      tags: [System]
+      summary: Get system configuration
+      responses:
+        "200":
+          description: System config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  theme: { $ref: "#/components/schemas/ThemeConfig" }
+    post:
+      tags: [System]
+      summary: Update system configuration (super_admin only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                theme: { $ref: "#/components/schemas/ThemeConfig" }
+      responses:
+        "200": { description: Updated config }
+        "403": { description: Forbidden }
+
+  # ── Catalog ───────────────────────────────────────────
+  /catalog:
+    get:
+      tags: [Catalog]
+      summary: Get feature catalog (domains → modules → features)
+      responses:
+        "200":
+          description: Catalog tree
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domains:
+                    type: array
+                    items:
+                      type: object
+
+  # ── Tenants ───────────────────────────────────────────
+  /tenants:
+    get:
+      tags: [Tenants]
+      summary: List all tenants
+      responses:
+        "200":
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Tenant" }
+
+  /tenants/{id}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Tenant detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "404": { description: Not found }
+
+  /tenants/{id}/theme:
+    post:
+      tags: [Tenants]
+      summary: Update tenant theme
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                themeConfig: { $ref: "#/components/schemas/ThemeConfig" }
+      responses:
+        "200": { description: Theme updated }
+        "403": { description: Forbidden }
+
+  /tenants/duplicate:
+    post:
+      tags: [Tenants]
+      summary: Duplicate a tenant (platform only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceTenantId]
+              properties:
+                sourceTenantId: { type: string }
+                overrides:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+      responses:
+        "201": { description: Tenant duplicated }
+        "403": { description: Forbidden }
+
+  # ── Theme ─────────────────────────────────────────────
+  /theme/resolved:
+    get:
+      tags: [Theme]
+      summary: Get resolved theme (system + tenant overrides)
+      responses:
+        "200":
+          description: Resolved theme
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ThemeConfig" }
+
+  # ── Audit Logs ────────────────────────────────────────
+  /audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: Query audit logs (platform only)
+      parameters:
+        - name: tenantId
+          in: query
+          schema: { type: string }
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditLogEntry" }
+        "403": { description: Forbidden }
+
+  # ── Feedback ──────────────────────────────────────────
+  /feedback:
+    post:
+      tags: [Feedback]
+      summary: Submit feedback (rate-limited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, pageUrl, routeName]
+              properties:
+                type: { type: string, enum: [CSAT, NPS, TEXT] }
+                score: { type: integer }
+                message: { type: string }
+                category: { type: string, enum: [Bug, Feature Request, UX, Performance, Other] }
+                pageUrl: { type: string }
+                routeName: { type: string }
+      responses:
+        "201": { description: Feedback submitted }
+        "429": { description: Rate limit exceeded }
+
+  # ── Users ─────────────────────────────────────────────
+  /users:
+    get:
+      tags: [Users]
+      summary: List platform users (scoped by tenant)
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+
+  # ── Impersonation ─────────────────────────────────────
+  /impersonation/start:
+    post:
+      tags: [Impersonation]
+      summary: Start impersonation session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetUserId, tenantId]
+              properties:
+                targetUserId: { type: string }
+                tenantId: { type: string }
+      responses:
+        "200": { description: Session started }
+        "403": { description: Insufficient permissions }
+
+  /impersonation/stop:
+    post:
+      tags: [Impersonation]
+      summary: Stop impersonation session
+      responses:
+        "200": { description: Session stopped }
+
+  # ── Tasks ─────────────────────────────────────────────
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: Get tasks assigned to current user
+      responses:
+        "200":
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /tasks/dashboard/layout:
+    get:
+      tags: [Dashboard]
+      summary: Get task dashboard layout
+      responses:
+        "200": { description: Layout JSON }
+    post:
+      tags: [Dashboard]
+      summary: Save task dashboard layout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                layoutJson: { type: string }
+      responses:
+        "200": { description: Saved }
+
+  /dashboard/layout:
+    get:
+      tags: [Dashboard]
+      summary: Get portal dashboard layout
+      responses:
+        "200": { description: Layout JSON }
+    post:
+      tags: [Dashboard]
+      summary: Save portal dashboard layout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                layoutJson: { type: string }
+      responses:
+        "200": { description: Saved }
+
+  # ── Form Templates (Tenant Admin) ────────────────────
+  /tenant-admin/form-templates:
+    get:
+      tags: [Form Templates]
+      summary: List form templates
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FormTemplate" }
+    post:
+      tags: [Form Templates]
+      summary: Create a form template
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                sections: { type: integer }
+                status: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormTemplate" }
+
+  /tenant-admin/form-templates/{id}:
+    put:
+      tags: [Form Templates]
+      summary: Update form template (name, status)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                status: { type: string, enum: [draft, published, archived] }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormTemplate" }
+    delete:
+      tags: [Form Templates]
+      summary: Delete a form template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  /tenant-admin/form-templates/{id}/schema:
+    get:
+      tags: [Form Templates]
+      summary: Get form schema (latest draft or published version)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  template: { type: object }
+                  versionNumber: { type: integer }
+                  status: { type: string }
+    put:
+      tags: [Form Templates]
+      summary: Save form schema (creates/updates draft version)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template]
+              properties:
+                template:
+                  type: object
+                  required: [sections]
+                  properties:
+                    sections: { type: array, items: { type: object } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  template: { type: object }
+                  versionNumber: { type: integer }
+
+  /tenant-admin/form-templates/{id}/duplicate:
+    post:
+      tags: [Form Templates]
+      summary: Duplicate a form template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormTemplate" }
+
+  /tenant-admin/form-templates/bulk-upload:
+    post:
+      tags: [Form Templates]
+      summary: Bulk upload form templates via CSV
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                csvText: { type: string }
+      responses:
+        "200":
+          description: Import result
+
+  # ── Form Versions ────────────────────────────────────
+  /tenant-admin/form-templates/{id}/versions:
+    get:
+      tags: [Form Versions]
+      summary: List all versions of a form
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FormVersion" }
+
+  /tenant-admin/form-templates/{id}/versions/{versionNumber}:
+    get:
+      tags: [Form Versions]
+      summary: Get a specific form version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: versionNumber
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormVersion" }
+
+  /tenant-admin/form-templates/{id}/versions/draft-from-published:
+    post:
+      tags: [Form Versions]
+      summary: Create a new draft from the latest published version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Existing draft returned }
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormVersion" }
+
+  /tenant-admin/form-templates/{id}/versions/{versionNumber}/publish:
+    post:
+      tags: [Form Versions]
+      summary: Publish a specific version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: versionNumber
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormVersion" }
+
+  /tenant-admin/form-templates/{id}/versions/{versionNumber}/rollback:
+    post:
+      tags: [Form Versions]
+      summary: Rollback to a previous version (creates new published version with old schema)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: versionNumber
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormVersion" }
+
+  # ── Form Submissions ─────────────────────────────────
+  /forms/templates/{templateId}:
+    get:
+      tags: [Form Submissions]
+      summary: Get published form template for runtime use
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  tenantId: { type: string }
+                  template: { type: object }
+                  versionNumber: { type: integer }
+
+  /forms/templates/{templateId}/submissions/start:
+    post:
+      tags: [Form Submissions]
+      summary: Start a new form submission (version-pinned)
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormSubmission" }
+        "404": { description: Form or published version not found }
+
+  /forms/data-library:
+    get:
+      tags: [Data Library]
+      summary: Get data library for form runtime
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DataRecord" }
+
+  # ── Workflow Templates (Tenant Admin) ─────────────────
+  /tenant-admin/workflow-templates:
+    get:
+      tags: [Workflow Templates]
+      summary: List workflow templates
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkflowTemplate" }
+    post:
+      tags: [Workflow Templates]
+      summary: Create a workflow template
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                linkedForm: { type: string }
+                steps: { type: integer }
+                sla: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkflowTemplate" }
+
+  /tenant-admin/workflow-templates/{id}:
+    put:
+      tags: [Workflow Templates]
+      summary: Update a workflow template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkflowTemplate" }
+    delete:
+      tags: [Workflow Templates]
+      summary: Delete a workflow template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted }
+
+  /tenant-admin/workflow-templates/{id}/duplicate:
+    post:
+      tags: [Workflow Templates]
+      summary: Duplicate a workflow template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkflowTemplate" }
+
+  /tenant-admin/workflow-templates/{id}/publish:
+    post:
+      tags: [Workflow Templates]
+      summary: Publish a workflow template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkflowTemplate" }
+
+  /tenant-admin/workflow-templates/{id}/archive:
+    post:
+      tags: [Workflow Templates]
+      summary: Archive a workflow template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkflowTemplate" }
+
+  # ── Roles (Tenant Admin) ─────────────────────────────
+  /tenant-admin/roles:
+    get:
+      tags: [Roles]
+      summary: List tenant roles
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RoleRecord" }
+    post:
+      tags: [Roles]
+      summary: Create a role
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                modules: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleRecord" }
+
+  /tenant-admin/roles/{id}:
+    put:
+      tags: [Roles]
+      summary: Update a role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleRecord" }
+    delete:
+      tags: [Roles]
+      summary: Delete a role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted }
+
+  /tenant-admin/roles/{id}/duplicate:
+    post:
+      tags: [Roles]
+      summary: Duplicate a role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleRecord" }
+
+  # ── Data Library (Tenant Admin) ──────────────────────
+  /tenant-admin/data:
+    get:
+      tags: [Data Library]
+      summary: List data records by scope
+      parameters:
+        - name: scope
+          in: query
+          schema: { type: string, enum: [org, module], default: org }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DataRecord" }
+    post:
+      tags: [Data Library]
+      summary: Create a data record
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope: { type: string }
+                type: { type: string }
+                module: { type: string }
+                entity: { type: string }
+                value: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataRecord" }
+
+  /tenant-admin/data/{id}:
+    put:
+      tags: [Data Library]
+      summary: Update a data record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataRecord" }
+    delete:
+      tags: [Data Library]
+      summary: Delete a data record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted }
+
+  /tenant-admin/data/{id}/duplicate:
+    post:
+      tags: [Data Library]
+      summary: Duplicate a data record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataRecord" }
+
+  /tenant-admin/data/bulk-upload:
+    post:
+      tags: [Data Library]
+      summary: Bulk upload data records via CSV
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                csvText: { type: string }
+                scope: { type: string }
+      responses:
+        "200": { description: Import result }
+
+  # ── User Management (Tenant Admin) ──────────────────
+  /tenant-admin/user-management:
+    get:
+      tags: [User Management]
+      summary: List tenant users with filters
+      parameters:
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: email
+          in: query
+          schema: { type: string }
+        - name: division
+          in: query
+          schema: { type: string }
+        - name: role
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TenantUser" }
+    post:
+      tags: [User Management]
+      summary: Create a tenant user assignment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                division: { type: string }
+                role: { type: string }
+                companyDepartment: { type: string }
+                status: { type: string }
+                assets: { type: array, items: { type: string } }
+                sites: { type: array, items: { type: string } }
+                remark: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantUser" }
+
+  /tenant-admin/user-management/options:
+    get:
+      tags: [User Management]
+      summary: Get filter options (roles, divisions, departments, etc.)
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles: { type: array, items: { type: string } }
+                  divisions: { type: array, items: { type: string } }
+                  departments: { type: array, items: { type: string } }
+                  assets: { type: array, items: { type: string } }
+                  sites: { type: array, items: { type: string } }
+                  statuses: { type: array, items: { type: string } }
+
+  /tenant-admin/user-management/{id}:
+    put:
+      tags: [User Management]
+      summary: Update a tenant user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantUser" }
+    delete:
+      tags: [User Management]
+      summary: Delete a tenant user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Deleted }
+
+  /tenant-admin/user-management/{id}/deactivate:
+    post:
+      tags: [User Management]
+      summary: Deactivate a tenant user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantUser" }
+
+  /tenant-admin/user-management/bulk-upload:
+    post:
+      tags: [User Management]
+      summary: Bulk upload tenant users via CSV
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                csvText: { type: string }
+      responses:
+        "200": { description: Import result }

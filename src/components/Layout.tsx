@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Sun, Moon, Monitor, LayoutDashboard, Building2, Users, FileText, Settings, LogOut, ChevronRight, Plus, RefreshCw, ShieldCheck, CheckSquare } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Building2, Users, FileText, Settings, LogOut, ShieldCheck, CheckSquare, GitBranch, Database, UserCog } from 'lucide-react';
 import { motion } from 'motion/react';
 import { navigate } from '../utils/navigation';
 import { FeedbackWidget } from './FeedbackWidget';
@@ -21,15 +21,15 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, title }) => {
     { label: 'Users', icon: Users, path: '/super-admin/users' },
     { label: 'System Settings', icon: Settings, path: '/super-admin/settings' },
   ] : (actingAs?.role === 'tenant_admin' || actingAs?.role === 'support_focal') ? [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/tenant-admin' },
-    { label: 'Templates', icon: FileText, path: '/tenant-admin/templates' },
-    { label: 'Users', icon: Users, path: '/tenant-admin/users' },
-    { label: 'Settings', icon: Settings, path: '/tenant-admin/settings' },
+    { label: 'Form Builder', icon: FileText, path: '/tenant-admin/form-builder' },
+    { label: 'Workflow Engine', icon: GitBranch, path: '/tenant-admin/workflow-engine' },
+    { label: 'Roles Management', icon: UserCog, path: '/tenant-admin/roles-management' },
+    { label: 'Data Management', icon: Database, path: '/tenant-admin/data-management' },
+    { label: 'User Management', icon: Users, path: '/tenant-admin/user-management' },
   ] : [
-    { label: 'HSE Portal', icon: LayoutDashboard, path: '/app' },
-    { label: 'Tasks', icon: CheckSquare, path: '/app/tasks' },
-    { label: 'New Permit', icon: Plus, path: '/app/forms/new' },
-    { label: 'My Submissions', icon: FileText, path: '/app/submissions' },
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/app' },
+    { label: 'My Tasks', icon: CheckSquare, path: '/app/tasks' },
+    { label: 'Modules', icon: FileText, path: '/app/modules' },
   ];
 
   const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -162,14 +162,16 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, title }) => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {children}
-          </motion.div>
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {children}
+            </motion.div>
+          </div>
         </div>
       </main>
       <FeedbackWidget />

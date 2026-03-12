@@ -7,7 +7,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
 
   useEffect(() => {
-    fetch('/api/tenants')
+    fetch('/api/v1/tenants')
       .then(res => res.json())
       .then(setTenants);
   }, []);

@@ -53,10 +53,10 @@ export const TasksPage: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const tasksData = await fetchWithAuth('/api/tasks');
+        const tasksData = await fetchWithAuth('/api/v1/tasks');
         setTasks(tasksData);
 
-        const layoutData = await fetchWithAuth('/api/tasks/dashboard/layout');
+        const layoutData = await fetchWithAuth('/api/v1/tasks/dashboard/layout');
         if (layoutData.layoutJson) {
           try {
             const parsed = JSON.parse(layoutData.layoutJson);
@@ -81,7 +81,7 @@ export const TasksPage: React.FC = () => {
     if (!Array.isArray(newWidgets)) return;
     setWidgets(newWidgets);
     try {
-      await fetchWithAuth('/api/tasks/dashboard/layout', {
+      await fetchWithAuth('/api/v1/tasks/dashboard/layout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ layoutJson: JSON.stringify(newWidgets) })

@@ -11,7 +11,7 @@ export const SystemSettings: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    fetch('/api/system/config')
+    fetch('/api/v1/system/config')
       .then(res => res.json())
       .then(setConfig);
   }, []);
@@ -21,7 +21,7 @@ export const SystemSettings: React.FC = () => {
     setIsSaving(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/system/config', {
+      const response = await fetch('/api/v1/system/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

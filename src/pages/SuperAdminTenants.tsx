@@ -12,7 +12,7 @@ export const SuperAdminTenants: React.FC = () => {
   const { user, startImpersonation } = useAuth();
 
   useEffect(() => {
-    fetchWithAuth('/api/tenants')
+    fetchWithAuth('/api/v1/tenants')
       .then(data => {
         if (Array.isArray(data)) {
           setTenants(data);

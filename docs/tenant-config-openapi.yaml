@@ -1,0 +1,1304 @@
+openapi: 3.1.0
+info:
+  title: Tenant Configurable Workflow and Form API
+  version: 0.1.0
+  description: |
+    Minimal but complete OpenAPI draft for multi-tenant configurable forms and workflows.
+    - Tenant scoped resources
+    - Versioned templates (draft/published/archived)
+    - Runtime rendering of resolved form schema
+    - Dropdown options sourced from Data Management domains
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: DataDomains
+  - name: FormTemplates
+  - name: WorkflowTemplates
+  - name: Runtime
+paths:
+  /tenant-admin/data-domains:
+    get:
+      tags: [DataDomains]
+      summary: List data domains for the tenant
+      responses:
+        '200':
+          description: Data domains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseDataDomainList'
+  /tenant-admin/data-domains/{domainKey}/records:
+    get:
+      tags: [DataDomains]
+      summary: List records in a data domain
+      parameters:
+        - $ref: '#/components/parameters/DomainKeyParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Domain records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseDomainRecordList'
+  /tenant-admin/data-domains/{domainKey}/query:
+    post:
+      tags: [DataDomains]
+      summary: Query domain records with filter expression
+      parameters:
+        - $ref: '#/components/parameters/DomainKeyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  $ref: '#/components/schemas/RuleExpr'
+                page:
+                  type: integer
+                  minimum: 1
+                  default: 1
+                pageSize:
+                  type: integer
+                  minimum: 1
+                  maximum: 200
+                  default: 20
+      responses:
+        '200':
+          description: Filtered records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseDomainRecordList'
+
+  /tenant-admin/form-templates:
+    get:
+      tags: [FormTemplates]
+      summary: List form templates
+      parameters:
+        - $ref: '#/components/parameters/StatusParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Form templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplateList'
+    post:
+      tags: [FormTemplates]
+      summary: Create form template (draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormTemplateUpsert'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+
+  /tenant-admin/form-templates/{id}:
+    get:
+      tags: [FormTemplates]
+      summary: Get form template by id
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Form template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+    put:
+      tags: [FormTemplates]
+      summary: Update form template (draft)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormTemplateUpsert'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+
+  /tenant-admin/form-templates/{id}/publish:
+    post:
+      tags: [FormTemplates]
+      summary: Publish a draft form template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Published template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+
+  /tenant-admin/form-templates/{id}/archive:
+    post:
+      tags: [FormTemplates]
+      summary: Archive a form template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Archived template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+
+  /tenant-admin/form-templates/{id}/duplicate:
+    post:
+      tags: [FormTemplates]
+      summary: Duplicate a form template into a new draft
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '201':
+          description: Duplicated template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormTemplate'
+
+  /tenant-admin/form-templates/validate:
+    post:
+      tags: [FormTemplates]
+      summary: Validate form template payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormTemplateUpsert'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseValidationResult'
+
+  /tenant-admin/form-templates/{id}/preview:
+    post:
+      tags: [FormTemplates]
+      summary: Preview resolved form for a sample context
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Resolved form preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormRender'
+
+  /tenant-admin/workflow-templates:
+    get:
+      tags: [WorkflowTemplates]
+      summary: List workflow templates
+      parameters:
+        - $ref: '#/components/parameters/StatusParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Workflow templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplateList'
+    post:
+      tags: [WorkflowTemplates]
+      summary: Create workflow template (draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowTemplateUpsert'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+
+  /tenant-admin/workflow-templates/{id}:
+    get:
+      tags: [WorkflowTemplates]
+      summary: Get workflow template by id
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Workflow template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+    put:
+      tags: [WorkflowTemplates]
+      summary: Update workflow template (draft)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowTemplateUpsert'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+
+  /tenant-admin/workflow-templates/{id}/publish:
+    post:
+      tags: [WorkflowTemplates]
+      summary: Publish a draft workflow template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Published template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+
+  /tenant-admin/workflow-templates/{id}/archive:
+    post:
+      tags: [WorkflowTemplates]
+      summary: Archive a workflow template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Archived template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+
+  /tenant-admin/workflow-templates/{id}/duplicate:
+    post:
+      tags: [WorkflowTemplates]
+      summary: Duplicate workflow template into a new draft
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '201':
+          description: Duplicated template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowTemplate'
+
+  /tenant-admin/workflow-templates/validate:
+    post:
+      tags: [WorkflowTemplates]
+      summary: Validate workflow template payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowTemplateUpsert'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseValidationResult'
+
+  /tenant-admin/workflow-templates/{id}/simulate:
+    post:
+      tags: [WorkflowTemplates]
+      summary: Simulate workflow transitions with sample inputs
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: object
+                  additionalProperties: true
+                actions:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+      responses:
+        '200':
+          description: Simulation output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSimulationResult'
+
+  /runtime/workflow-instances:
+    post:
+      tags: [Runtime]
+      summary: Start workflow instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartWorkflowRequest'
+      responses:
+        '201':
+          description: Workflow instance started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowInstance'
+
+  /runtime/workflow-instances/{instanceId}:
+    get:
+      tags: [Runtime]
+      summary: Get workflow instance details
+      parameters:
+        - name: instanceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseWorkflowInstance'
+
+  /runtime/tasks:
+    get:
+      tags: [Runtime]
+      summary: List task inbox
+      parameters:
+        - name: assigneeUserId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, rejected, cancelled]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseTaskList'
+
+  /runtime/tasks/{taskId}/form-render:
+    get:
+      tags: [Runtime]
+      summary: Resolve and render form for task context
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resolved form model with dynamic options and rule outputs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFormRender'
+
+  /runtime/tasks/{taskId}/actions:
+    post:
+      tags: [Runtime]
+      summary: Submit a task action with optional form values
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskActionRequest'
+      responses:
+        '200':
+          description: Action accepted and state advanced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseTaskActionResult'
+
+  /runtime/workflow-instances/{instanceId}/audit-events:
+    get:
+      tags: [Runtime]
+      summary: List workflow audit events
+      parameters:
+        - name: instanceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAuditEventList'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    DomainKeyParam:
+      name: domainKey
+      in: path
+      required: true
+      schema:
+        type: string
+    SearchParam:
+      name: search
+      in: query
+      schema:
+        type: string
+    StatusParam:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/ResourceStatus'
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+
+  schemas:
+    ApiMeta:
+      type: object
+      properties:
+        traceId:
+          type: string
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      additionalProperties: false
+
+    ApiErrorDetail:
+      type: object
+      required: [path, message]
+      properties:
+        path:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiErrorDetail'
+        traceId:
+          type: string
+      additionalProperties: false
+
+    ResourceStatus:
+      type: string
+      enum: [draft, published, archived]
+
+    DataDomain:
+      type: object
+      required: [key, name, schema, status, updatedAt]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataDomainField'
+        status:
+          type: string
+          enum: [active, inactive]
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    DataDomainField:
+      type: object
+      required: [key, type]
+      properties:
+        key:
+          type: string
+        type:
+          type: string
+          enum: [string, number, boolean, date]
+      additionalProperties: false
+
+    DomainRecord:
+      type: object
+      additionalProperties: true
+
+    RuleExpr:
+      oneOf:
+        - type: object
+          required: [all]
+          properties:
+            all:
+              type: array
+              items:
+                $ref: '#/components/schemas/RuleExpr'
+          additionalProperties: false
+        - type: object
+          required: [any]
+          properties:
+            any:
+              type: array
+              items:
+                $ref: '#/components/schemas/RuleExpr'
+          additionalProperties: false
+        - type: object
+          required: [not]
+          properties:
+            not:
+              $ref: '#/components/schemas/RuleExpr'
+          additionalProperties: false
+        - type: object
+          required: [fact, op]
+          properties:
+            fact:
+              type: string
+            op:
+              type: string
+              enum: [eq, neq, in, nin, gt, gte, lt, lte, exists]
+            value: {}
+          additionalProperties: false
+
+    OptionSource:
+      type: object
+      required: [sourceType, domainKey, valuePath, labelPath]
+      properties:
+        sourceType:
+          type: string
+          enum: [data_domain]
+        domainKey:
+          type: string
+        valuePath:
+          type: string
+        labelPath:
+          type: string
+        filters:
+          $ref: '#/components/schemas/RuleExpr'
+        sortBy:
+          type: string
+        sortDir:
+          type: string
+          enum: [asc, desc]
+      additionalProperties: false
+
+    FormFieldType:
+      type: string
+      enum: [text, textarea, number, date, datetime, checkbox, radio, select, multiselect, file, user, role]
+
+    FormFieldConfig:
+      type: object
+      required: [key, label, type]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/FormFieldType'
+        placeholder:
+          type: string
+        helpText:
+          type: string
+        defaultValue: {}
+        required:
+          type: boolean
+        requiredWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        visibleWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        readOnlyWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        validation:
+          $ref: '#/components/schemas/ValidationConfig'
+        optionsSource:
+          $ref: '#/components/schemas/OptionSource'
+      additionalProperties: false
+
+    ValidationConfig:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        minLength:
+          type: integer
+        maxLength:
+          type: integer
+        pattern:
+          type: string
+      additionalProperties: false
+
+    FormSectionConfig:
+      type: object
+      required: [key, label, order, fields]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        order:
+          type: integer
+        visibleWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormFieldConfig'
+      additionalProperties: false
+
+    FormTemplate:
+      type: object
+      required: [id, tenantId, key, name, version, status, sections, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSectionConfig'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    FormTemplateUpsert:
+      type: object
+      required: [key, name, sections]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSectionConfig'
+      additionalProperties: false
+
+    StepType:
+      type: string
+      enum: [submit, approval, endorsement, verification, notification, task, form]
+
+    AssignmentRule:
+      type: object
+      required: [strategy]
+      properties:
+        strategy:
+          type: string
+          enum: [role, user, expression]
+        roleKey:
+          type: string
+        userId:
+          type: string
+        expression:
+          $ref: '#/components/schemas/RuleExpr'
+      additionalProperties: false
+
+    FormBinding:
+      type: object
+      required: [formTemplateKey, mode]
+      properties:
+        formTemplateKey:
+          type: string
+        mode:
+          type: string
+          enum: [create, edit, review]
+        sectionKeys:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+
+    WorkflowStep:
+      type: object
+      required: [key, stepType, displayLabel, assignee]
+      properties:
+        key:
+          type: string
+        stepType:
+          $ref: '#/components/schemas/StepType'
+        displayLabel:
+          type: string
+        description:
+          type: string
+        formBinding:
+          $ref: '#/components/schemas/FormBinding'
+        assignee:
+          $ref: '#/components/schemas/AssignmentRule'
+        entryWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        completionWhen:
+          $ref: '#/components/schemas/RuleExpr'
+        slaHours:
+          type: number
+          minimum: 0
+      additionalProperties: false
+
+    WorkflowTransition:
+      type: object
+      required: [key, fromStepKey, toStepKey]
+      properties:
+        key:
+          type: string
+        fromStepKey:
+          type: string
+        toStepKey:
+          type: string
+        condition:
+          $ref: '#/components/schemas/RuleExpr'
+        isDefault:
+          type: boolean
+        label:
+          type: string
+      additionalProperties: false
+
+    WorkflowTemplate:
+      type: object
+      required: [id, tenantId, key, name, version, status, steps, transitions, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowTransition'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    WorkflowTemplateUpsert:
+      type: object
+      required: [key, name, steps, transitions]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowTransition'
+      additionalProperties: false
+
+    StartWorkflowRequest:
+      type: object
+      required: [workflowTemplateKey]
+      properties:
+        workflowTemplateKey:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+
+    WorkflowInstance:
+      type: object
+      required: [id, workflowTemplateKey, workflowTemplateVersion, status, currentStepKey, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        workflowTemplateKey:
+          type: string
+        workflowTemplateVersion:
+          type: integer
+        status:
+          type: string
+          enum: [running, completed, cancelled, failed]
+        currentStepKey:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    TaskSummary:
+      type: object
+      required: [id, workflowInstanceId, stepKey, displayLabel, assigneeUserId, status]
+      properties:
+        id:
+          type: string
+        workflowInstanceId:
+          type: string
+        stepKey:
+          type: string
+        displayLabel:
+          type: string
+        assigneeUserId:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, rejected, cancelled]
+        dueAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    RenderedOption:
+      type: object
+      required: [value, label]
+      properties:
+        value: {}
+        label:
+          type: string
+      additionalProperties: false
+
+    RenderedField:
+      type: object
+      required: [key, label, type, visible, readOnly, required]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/FormFieldType'
+        visible:
+          type: boolean
+        readOnly:
+          type: boolean
+        required:
+          type: boolean
+        value: {}
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/RenderedOption'
+      additionalProperties: false
+
+    RenderedSection:
+      type: object
+      required: [key, label, visible, fields]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        visible:
+          type: boolean
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/RenderedField'
+      additionalProperties: false
+
+    FormRender:
+      type: object
+      required: [taskId, workflowInstanceId, step, form]
+      properties:
+        taskId:
+          type: string
+        workflowInstanceId:
+          type: string
+        step:
+          type: object
+          required: [key, stepType, displayLabel]
+          properties:
+            key:
+              type: string
+            stepType:
+              $ref: '#/components/schemas/StepType'
+            displayLabel:
+              type: string
+          additionalProperties: false
+        form:
+          type: object
+          required: [templateKey, version, sections]
+          properties:
+            templateKey:
+              type: string
+            version:
+              type: integer
+            sections:
+              type: array
+              items:
+                $ref: '#/components/schemas/RenderedSection'
+          additionalProperties: false
+      additionalProperties: false
+
+    TaskActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+        comment:
+          type: string
+        formValues:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+
+    TaskActionResult:
+      type: object
+      required: [taskId, workflowInstanceId, outcome, nextStepKey]
+      properties:
+        taskId:
+          type: string
+        workflowInstanceId:
+          type: string
+        outcome:
+          type: string
+        nextStepKey:
+          type: string
+      additionalProperties: false
+
+    AuditEvent:
+      type: object
+      required: [id, workflowInstanceId, eventType, actorUserId, occurredAt]
+      properties:
+        id:
+          type: string
+        workflowInstanceId:
+          type: string
+        eventType:
+          type: string
+        actorUserId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    ValidationIssue:
+      type: object
+      required: [path, message]
+      properties:
+        path:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+
+    ValidationResult:
+      type: object
+      required: [valid, issues]
+      properties:
+        valid:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+      additionalProperties: false
+
+    SimulationResult:
+      type: object
+      required: [valid, stepsVisited]
+      properties:
+        valid:
+          type: boolean
+        stepsVisited:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+
+    ApiResponseDataDomainList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataDomain'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseDomainRecordList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DomainRecord'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseFormTemplate:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/FormTemplate'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseFormTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormTemplate'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseWorkflowTemplate:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/WorkflowTemplate'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseWorkflowTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowTemplate'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseWorkflowInstance:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/WorkflowInstance'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseTaskList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskSummary'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseFormRender:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/FormRender'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseTaskActionResult:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskActionResult'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseAuditEventList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseValidationResult:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ValidationResult'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+    ApiResponseSimulationResult:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SimulationResult'
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+      additionalProperties: false
+
+x-validation-rules:
+  - No duplicate keys in sections or fields.
+  - select/multiselect/radio fields must define optionsSource.
+  - optionsSource.domainKey must exist in Data Management.
+  - Workflow graph must have one start step and at least one terminal path.
+  - Transition logic must be deterministic when conditional branches exist.
+  - Referenced roles and formTemplateKey values must exist.
