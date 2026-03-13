@@ -29,30 +29,142 @@ const initDatabase = (defaultTheme: any) => {
   const schemaSql = fs.readFileSync(schemaPath, "utf-8");
   db.exec(schemaSql);
 
-  const existing = db.prepare("SELECT config_json FROM system_config WHERE id = 1").get() as { config_json: string } | undefined;
+  // Migrate old system_config JSON blob → typed system_theme columns
+  const hasOldTable = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='system_config'"
+  ).get() as { name: string } | undefined;
+  if (hasOldTable) {
+    const oldRow = db.prepare("SELECT config_json FROM system_config WHERE id = 1").get() as { config_json: string } | undefined;
+    if (oldRow) {
+      try {
+        const cfg = JSON.parse(oldRow.config_json);
+        const t = cfg.theme || cfg;
+        const colors = t.graphColors || [];
+        db.prepare(`
+          INSERT OR IGNORE INTO system_theme (
+            id, logo_url, primary_color, secondary_color, background_color, surface_color,
+            graph_color_1, graph_color_2, graph_color_3, graph_color_4, graph_color_5,
+            font_family, font_color_header, font_color_sidebar, font_color_body,
+            layout_mode, dark_mode_enabled, updated_at
+          ) VALUES (
+            'default', ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?
+          )
+        `).run(
+          t.logoUrl || null,
+          t.primaryColor || null,
+          t.secondaryColor || null,
+          t.layoutColors?.mainPage || null,
+          null,
+          colors[0] || null, colors[1] || null, colors[2] || null, colors[3] || null, colors[4] || null,
+          t.fontFamily || null,
+          t.layoutColors?.header || null,
+          t.layoutColors?.leftPanel || null,
+          t.layoutColors?.font || null,
+          'header_left_main',
+          t.defaultMode === 'dark' ? 1 : 0,
+          new Date().toISOString()
+        );
+      } catch { /* ignore parse errors */ }
+    }
+    db.exec("DROP TABLE IF EXISTS system_config");
+  }
+
+  // Seed default system_theme row if none exists
+  const existing = db.prepare("SELECT id FROM system_theme LIMIT 1").get();
   if (!existing) {
-    db.prepare("INSERT INTO system_config (id, config_json, updated_at) VALUES (1, ?, ?)")
-      .run(JSON.stringify({ theme: defaultTheme }), new Date().toISOString());
+    const t = defaultTheme;
+    const colors = t.graphColors || [];
+    db.prepare(`
+      INSERT INTO system_theme (
+        id, logo_url, primary_color, secondary_color, background_color, surface_color,
+        graph_color_1, graph_color_2, graph_color_3, graph_color_4, graph_color_5,
+        font_family, font_color_header, font_color_sidebar, font_color_body,
+        layout_mode, dark_mode_enabled, updated_at
+      ) VALUES (
+        'default', ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?
+      )
+    `).run(
+      t.logoUrl || null,
+      t.primaryColor || null,
+      t.secondaryColor || null,
+      t.layoutColors?.mainPage || null,
+      null,
+      colors[0] || null, colors[1] || null, colors[2] || null, colors[3] || null, colors[4] || null,
+      t.fontFamily || null,
+      t.layoutColors?.header || null,
+      t.layoutColors?.leftPanel || null,
+      t.layoutColors?.font || null,
+      'header_left_main',
+      t.defaultMode === 'dark' ? 1 : 0,
+      new Date().toISOString()
+    );
   }
 };
 
 const getSystemConfigFromDb = () => {
-  const row = db.prepare("SELECT config_json FROM system_config WHERE id = 1").get() as { config_json: string } | undefined;
+  const row = db.prepare("SELECT * FROM system_theme LIMIT 1").get() as any;
   if (!row) return null;
-  try {
-    return JSON.parse(row.config_json);
-  } catch {
-    return null;
-  }
+  return {
+    theme: {
+      primaryColor: row.primary_color,
+      secondaryColor: row.secondary_color,
+      accentColor: row.graph_color_1,
+      fontFamily: row.font_family,
+      defaultMode: row.dark_mode_enabled ? 'dark' : 'light',
+      allowUserModeToggle: true,
+      logoUrl: row.logo_url,
+      layoutColors: {
+        header: row.font_color_header,
+        leftPanel: row.font_color_sidebar,
+        mainPage: row.background_color,
+        font: row.font_color_body
+      },
+      graphColors: [
+        row.graph_color_1, row.graph_color_2, row.graph_color_3,
+        row.graph_color_4, row.graph_color_5
+      ].filter(Boolean)
+    }
+  };
 };
 
 const saveSystemConfigToDb = (config: any) => {
-  db.prepare("UPDATE system_config SET config_json = ?, updated_at = ? WHERE id = 1")
-    .run(JSON.stringify(config), new Date().toISOString());
+  const t = config.theme || config;
+  const colors = t.graphColors || [];
+  db.prepare(`
+    UPDATE system_theme SET
+      logo_url = ?, primary_color = ?, secondary_color = ?,
+      background_color = ?, surface_color = ?,
+      graph_color_1 = ?, graph_color_2 = ?, graph_color_3 = ?,
+      graph_color_4 = ?, graph_color_5 = ?,
+      font_family = ?, font_color_header = ?, font_color_sidebar = ?,
+      font_color_body = ?, layout_mode = ?, dark_mode_enabled = ?,
+      updated_at = ?
+    WHERE id = 'default'
+  `).run(
+    t.logoUrl || null,
+    t.primaryColor || null,
+    t.secondaryColor || null,
+    t.layoutColors?.mainPage || null,
+    null,
+    colors[0] || null, colors[1] || null, colors[2] || null, colors[3] || null, colors[4] || null,
+    t.fontFamily || null,
+    t.layoutColors?.header || null,
+    t.layoutColors?.leftPanel || null,
+    t.layoutColors?.font || null,
+    'header_left_main',
+    t.defaultMode === 'dark' ? 1 : 0,
+    new Date().toISOString()
+  );
 };
 
 const getTenantThemeFromDb = (tenantId: string) => {
-  const row = db.prepare("SELECT theme_config_json FROM tenant_themes WHERE tenant_id = ?").get(tenantId) as { theme_config_json: string } | undefined;
+  const row = db.prepare("SELECT theme_config_json FROM tenant_theme WHERE tenant_id = ?").get(tenantId) as { theme_config_json: string } | undefined;
   if (!row) return null;
   try {
     return JSON.parse(row.theme_config_json);
@@ -63,7 +175,7 @@ const getTenantThemeFromDb = (tenantId: string) => {
 
 const saveTenantThemeToDb = (tenantId: string, themeConfig: any) => {
   db.prepare(`
-    INSERT INTO tenant_themes (tenant_id, theme_config_json, updated_at)
+    INSERT INTO tenant_theme (tenant_id, theme_config_json, updated_at)
     VALUES (?, ?, ?)
     ON CONFLICT(tenant_id) DO UPDATE SET
       theme_config_json = excluded.theme_config_json,
@@ -73,7 +185,7 @@ const saveTenantThemeToDb = (tenantId: string, themeConfig: any) => {
 
 const saveAuditToDb = (entry: AuditEntry) => {
   db.prepare(`
-    INSERT INTO audit_log (
+    INSERT INTO audit_logs (
       id, tenant_id, actor_id, acting_as_id, impersonation_session_id,
       action, entity_type, entity_id, before_snapshot, after_snapshot,
       ip_address, user_agent, created_at
@@ -592,7 +704,7 @@ async function startServer() {
         ip_address as ipAddress,
         user_agent as userAgent,
         created_at as createdAt
-      FROM audit_log
+      FROM audit_logs
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY created_at DESC
       LIMIT ?

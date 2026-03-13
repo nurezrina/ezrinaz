@@ -1,3 +1,12 @@
+-- ============================================================
+-- CANONICAL PRODUCTION SCHEMA — Azure SQL / T-SQL
+-- NAMING CONVENTION: snake_case, singular table names
+-- DEV MIRROR: sqlite_schema.sql
+-- LOOKUP TABLES: lookup_tables.sql
+-- SEED DATA: docs/database/seed.sql
+-- Last consolidated: 2026-03-13
+-- ============================================================
+
 -- ============================================================================
 -- VIRTUS SaaS Platform — Enterprise SQL Schema (v1)
 -- Target: Azure SQL / PostgreSQL compatible (uses UNIQUEIDENTIFIER/NEWID on SQL Server)

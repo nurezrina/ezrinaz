@@ -10,6 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "db:init": "tsx scripts/db-init.ts",
+    "db:reset": "rm -f data/app.db && tsx scripts/db-init.ts",
     "db:view": "tsx scripts/db-view.ts"
   },
   "dependencies": {
