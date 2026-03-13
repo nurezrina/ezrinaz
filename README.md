@@ -29,11 +29,30 @@ VIRTUS is a production-ready, multi-tenant SaaS application built for enterprise
    ```env
    GEMINI_API_KEY="..."
    APP_URL="http://localhost:3000"
+   # Optional: local SQLite path (free, local file)
+   DATABASE_PATH="./data/app.db"
    ```
 
-3. **Run Application**:
+3. **Initialize Local Database (SQLite, free)**:
+   ```bash
+   npm run db:init
+   ```
+
+4. **Run Application**:
    ```bash
    npm run dev
+   ```
+
+5. **View Database Contents**:
+   ```bash
+   npm run db:view
+   ```
+
+   Optional interactive query with sqlite3 CLI:
+   ```bash
+   sqlite3 data/app.db
+   .tables
+   SELECT * FROM feedback ORDER BY created_at DESC LIMIT 20;
    ```
 
 ## Azure Deployment

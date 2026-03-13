@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import * as fs from "node:fs";
+import Database from "better-sqlite3";
 
 // Extend Express Request type
 declare global {
@@ -15,6 +17,83 @@ declare global {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, "data", "app.db");
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+const db = new Database(dbPath);
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+
+const initDatabase = (defaultTheme: any) => {
+  const schemaPath = path.join(__dirname, "sql", "sqlite_schema.sql");
+  const schemaSql = fs.readFileSync(schemaPath, "utf-8");
+  db.exec(schemaSql);
+
+  const existing = db.prepare("SELECT config_json FROM system_config WHERE id = 1").get() as { config_json: string } | undefined;
+  if (!existing) {
+    db.prepare("INSERT INTO system_config (id, config_json, updated_at) VALUES (1, ?, ?)")
+      .run(JSON.stringify({ theme: defaultTheme }), new Date().toISOString());
+  }
+};
+
+const getSystemConfigFromDb = () => {
+  const row = db.prepare("SELECT config_json FROM system_config WHERE id = 1").get() as { config_json: string } | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.config_json);
+  } catch {
+    return null;
+  }
+};
+
+const saveSystemConfigToDb = (config: any) => {
+  db.prepare("UPDATE system_config SET config_json = ?, updated_at = ? WHERE id = 1")
+    .run(JSON.stringify(config), new Date().toISOString());
+};
+
+const getTenantThemeFromDb = (tenantId: string) => {
+  const row = db.prepare("SELECT theme_config_json FROM tenant_themes WHERE tenant_id = ?").get(tenantId) as { theme_config_json: string } | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.theme_config_json);
+  } catch {
+    return null;
+  }
+};
+
+const saveTenantThemeToDb = (tenantId: string, themeConfig: any) => {
+  db.prepare(`
+    INSERT INTO tenant_themes (tenant_id, theme_config_json, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(tenant_id) DO UPDATE SET
+      theme_config_json = excluded.theme_config_json,
+      updated_at = excluded.updated_at
+  `).run(tenantId, JSON.stringify(themeConfig), new Date().toISOString());
+};
+
+const saveAuditToDb = (entry: AuditEntry) => {
+  db.prepare(`
+    INSERT INTO audit_log (
+      id, tenant_id, actor_id, acting_as_id, impersonation_session_id,
+      action, entity_type, entity_id, before_snapshot, after_snapshot,
+      ip_address, user_agent, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    entry.id,
+    entry.tenantId,
+    entry.actorId,
+    entry.actingAsId,
+    entry.impersonationSessionId,
+    entry.action,
+    entry.entityType,
+    entry.entityId,
+    entry.beforeSnapshot,
+    entry.afterSnapshot,
+    entry.ipAddress,
+    entry.userAgent,
+    entry.createdAt
+  );
+};
 
 // ============================================================================
 // Input Validation Helpers
@@ -67,8 +146,6 @@ type AuditEntry = {
   createdAt: string;
 };
 
-const auditLog: AuditEntry[] = [];
-
 /** Write an audit log entry for any CUD operation */
 const writeAudit = (
   req: Request,
@@ -93,7 +170,7 @@ const writeAudit = (
     userAgent: req.get('user-agent') || null,
     createdAt: new Date().toISOString(),
   };
-  auditLog.push(entry);
+  saveAuditToDb(entry);
   return entry;
 };
 
@@ -101,7 +178,6 @@ const writeAudit = (
 // Mock Storage
 // ============================================================================
 
-const feedbackStorage: any[] = [];
 const submissionRateLimit = new Map<string, number[]>();
 
 const defaultSystemTheme = {
@@ -121,11 +197,8 @@ const defaultSystemTheme = {
   graphColors: ["#2ED9C3", "#2A7DE1", "#0055B8", "#001689", "#64748b"]
 };
 
-let systemConfig = {
-  theme: { ...defaultSystemTheme }
-};
-
-const tenantThemes = new Map<string, any>();
+initDatabase(defaultSystemTheme);
+let systemConfig = getSystemConfigFromDb() || { theme: { ...defaultSystemTheme } };
 
 async function startServer() {
   const app = express();
@@ -412,7 +485,7 @@ async function startServer() {
   app.get("/api/v1/tenants", (req, res) => {
     const tenants = tenantDirectory.map(t => ({
       ...t,
-      themeConfig: tenantThemes.get(t.id) || null
+      themeConfig: getTenantThemeFromDb(t.id)
     }));
     res.json(tenants);
   });
@@ -423,7 +496,7 @@ async function startServer() {
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
     res.json({
       ...tenant,
-      themeConfig: tenantThemes.get(id) || null
+      themeConfig: getTenantThemeFromDb(id)
     });
   });
 
@@ -440,7 +513,7 @@ async function startServer() {
       return res.status(403).json({ error: "Insufficient permissions to update theme" });
     }
 
-    tenantThemes.set(id, themeConfig);
+    saveTenantThemeToDb(id, themeConfig);
     res.json({ success: true, themeConfig });
   });
 
@@ -454,13 +527,14 @@ async function startServer() {
       return res.status(403).json({ error: "Only Super Admins can update system config" });
     }
     systemConfig = { ...systemConfig, ...req.body };
+    saveSystemConfigToDb(systemConfig);
     res.json(systemConfig);
   });
 
   // Resolved Theme
   app.get("/api/v1/theme/resolved", (req, res) => {
     const tenantId = req.actingAs?.actingAsTenantId || req.user?.tenantId;
-    const tenantTheme = tenantId ? tenantThemes.get(tenantId) : null;
+    const tenantTheme = tenantId ? getTenantThemeFromDb(tenantId) : null;
     
     // Resolution: System -> Tenant Overrides
     // Note: Deep merge for layoutColors if needed, but simple spread for now
@@ -489,10 +563,43 @@ async function startServer() {
     const entityType = req.query.entityType as string | undefined;
     const limit = Math.min(Number(req.query.limit) || 100, 500);
 
-    let filtered = auditLog;
-    if (tenantId) filtered = filtered.filter(e => e.tenantId === tenantId);
-    if (entityType) filtered = filtered.filter(e => e.entityType === entityType);
-    res.json(filtered.slice(-limit).reverse());
+    const where: string[] = [];
+    const params: any[] = [];
+
+    if (tenantId) {
+      where.push("tenant_id = ?");
+      params.push(tenantId);
+    }
+    if (entityType) {
+      where.push("entity_type = ?");
+      params.push(entityType);
+    }
+
+    params.push(limit);
+
+    const query = `
+      SELECT
+        id,
+        tenant_id as tenantId,
+        actor_id as actorId,
+        acting_as_id as actingAsId,
+        impersonation_session_id as impersonationSessionId,
+        action,
+        entity_type as entityType,
+        entity_id as entityId,
+        before_snapshot as beforeSnapshot,
+        after_snapshot as afterSnapshot,
+        ip_address as ipAddress,
+        user_agent as userAgent,
+        created_at as createdAt
+      FROM audit_log
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      ORDER BY created_at DESC
+      LIMIT ?
+    `;
+
+    const rows = db.prepare(query).all(...params);
+    res.json(rows);
   });
 
   // Feedback API
@@ -544,13 +651,85 @@ async function startServer() {
       clientMeta
     };
 
-    feedbackStorage.push(feedback);
+    db.prepare(`
+      INSERT INTO feedback (
+        id, tenant_id, user_id, acting_as_user_id, page_url, route_name,
+        type, score, category, message, created_at, app_version, client_meta_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      feedback.id,
+      feedback.tenantId,
+      feedback.userId,
+      feedback.actingAsUserId,
+      feedback.pageUrl,
+      feedback.routeName,
+      feedback.type,
+      feedback.score,
+      feedback.category,
+      feedback.message,
+      feedback.createdAt,
+      feedback.appVersion,
+      feedback.clientMeta ? JSON.stringify(feedback.clientMeta) : null
+    );
+
     userSubmissions.push(now);
     submissionRateLimit.set(userId, userSubmissions);
 
     writeAudit(req, 'CREATE', 'feedback', feedback.id, null, { feedbackId: feedback.id, type });
 
     res.status(201).json({ success: true, id: feedback.id });
+  });
+
+  app.get("/api/v1/feedback", (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const role = req.user.role;
+    const tenantId = req.query.tenantId as string | undefined;
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
+    const effectiveTenantId = req.actingAs?.actingAsTenantId || req.user.tenantId;
+
+    const where: string[] = [];
+    const params: any[] = [];
+
+    if (role === 'super_admin' || role === 'support') {
+      if (tenantId) {
+        where.push("tenant_id = ?");
+        params.push(tenantId);
+      }
+    } else {
+      where.push("tenant_id = ?");
+      params.push(effectiveTenantId);
+    }
+
+    params.push(limit);
+
+    const rows = db.prepare(`
+      SELECT
+        id,
+        tenant_id as tenantId,
+        user_id as userId,
+        acting_as_user_id as actingAsUserId,
+        page_url as pageUrl,
+        route_name as routeName,
+        type,
+        score,
+        category,
+        message,
+        created_at as createdAt,
+        app_version as appVersion,
+        client_meta_json as clientMetaJson
+      FROM feedback
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(...params) as any[];
+
+    const parsed = rows.map((row) => ({
+      ...row,
+      clientMeta: row.clientMetaJson ? JSON.parse(row.clientMetaJson) : null,
+    }));
+
+    res.json(parsed);
   });
 
   // Users
@@ -1156,9 +1335,9 @@ async function startServer() {
     roleStore.set(nextTenantId, cloneRoleRecords(sourceTenantId, nextTenantId));
     dataStore.set(nextTenantId, cloneDataRecords(sourceTenantId, nextTenantId));
 
-    const sourceTheme = tenantThemes.get(sourceTenantId);
+    const sourceTheme = getTenantThemeFromDb(sourceTenantId);
     if (sourceTheme) {
-      tenantThemes.set(nextTenantId, JSON.parse(JSON.stringify(sourceTheme)));
+      saveTenantThemeToDb(nextTenantId, JSON.parse(JSON.stringify(sourceTheme)));
     }
 
     tenantDirectory.push(clonedTenant);
